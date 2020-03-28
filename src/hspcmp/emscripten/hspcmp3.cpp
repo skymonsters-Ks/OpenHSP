@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <emscripten.h>
+#include <emscripten/bind.h>
 
 #include "../../hsp3/hsp3config.h"
 
@@ -20,9 +21,6 @@
 
 #define DPM_SUPPORT		// DPMファイルマネージャをサポート
 #include "../win32dll/dpm.h"
-
-#define EXPORT extern "C" EMSCRIPTEN_KEEPALIVE
-#define BOOL int
 
 static char fname[HSP_MAX_PATH];
 static char rname[HSP_MAX_PATH];
@@ -39,6 +37,7 @@ extern char *hsp_prestr[];
 
 int main()
 {
+	Alertf("%s%s / Emscripten %d.%d.%d", HSPTITLE, hspver, __EMSCRIPTEN_major__, __EMSCRIPTEN_minor__, __EMSCRIPTEN_tiny__);
 	hsc3 = new CHsc3;
 	return 0;
 }
@@ -65,104 +64,62 @@ static int GetFilePath( char *bname )
 
 //----------------------------------------------------------
 
-EXPORT BOOL hsc_ini ( BMSCR *bm, char *p1, int p2, int p3 )
+void hsc_ini ( const std::string p1 )
 {
-	//
-	//		hsc_ini "src-file"  (type6)
-	//
-	strcpy(fname,p1);
-	strcpy(rname,p1);
-	strcpy(oname,p1);
+	strcpy(fname,p1.c_str());
+	strcpy(rname,p1.c_str());
+	strcpy(oname,p1.c_str());
 	cutext(oname);
 	strcat(oname,".ax");
-	return 0;
 }
 
 
-EXPORT BOOL hsc_refname ( BMSCR *bm, char *p1, int p2, int p3 )
+void hsc_refname ( const std::string p1 )
 {
-	//
-	//		hsc_refname "ref-file"  (type6)
-	//
-	strcpy(rname,p1);
-	return 0;
+	strcpy(rname,p1.c_str());
 }
 
 
-EXPORT BOOL hsc_objname ( BMSCR *bm, char *p1, int p2, int p3 )
+void hsc_objname ( const std::string p1 )
 {
-	//
-	//		hsc_objname "obj-file"  (type6)
-	//
-	strcpy(oname,p1);
-	return 0;
+	strcpy(oname,p1.c_str());
 }
 
 
-EXPORT BOOL hsc_ver ( int p1, int p2, int p3, char *p4 )
+std::string hsc_ver ()
 {
-	//
-	//		hsc_ver (type$10)
-	//
-	sprintf( p4,"%s ver%s", HSC3TITLE, hspver );
-	return 0;
+	char ver[64];
+	sprintf( ver, "%s ver%s", HSC3TITLE, hspver );
+	return std::string( ver );
 }
 
 
-EXPORT BOOL hsc_bye ( int p1, int p2, int p3, int p4 )
+void hsc_bye ()
 {
-	//
-	//		hsc_bye (type$100)
-	//
-	return 0;
 }
 
 
-EXPORT BOOL hsc_getmes ( char *p1, int p2, int p3, int p4 )
+std::string hsc_getmes ()
 {
-	//
-	//		hsc_getmes val (type1)
-	//
-	strcpy( p1, hsc3->GetError() );
-	return 0;
+	return std::string( hsc3->GetError() );
 }
 
 
-EXPORT BOOL hsc_clrmes ( int p1, int p2, int p3, int p4 )
+void hsc_clrmes ()
 {
-	//
-	//		hsc_clrmes (type0)
-	//
 	hsc3->ResetError();
-	return 0;
 }
 
 
-EXPORT BOOL hsc_compath ( BMSCR *bm, char *p1, int p2, int p3 )
+void hsc_compath ( const std::string p1 )
 {
-	//
-	//		hsc_compath "common-path"  (type6)
-	//
-	strcpy(compath,p1);
+	strcpy(compath,p1.c_str());
 	orgcompath=1;
-	return 0;
 }
 
 
-EXPORT BOOL hsc_comp ( int p1, int p2, int p3, int p4 )
+int hsc_comp ( int p1, int p2, int p3 )
 {
-	//
-	//		hsc_comp mode,ppopt,dbgopt  (type0)
-	//			( mode: 1=debug/0=no debug )
-	//			(       2=preprocessor only )
-	//			( ppopt = preprocessor option )
-	//			(       0=default/1=ver2.6 mode )
-	//			( dbgopt = debug window option )
-	//			(       0=default/1=debug mode )
-/*
-	int st;
-	st=tcomp_main( rname, fname, oname, mesbuf, p1, compath );
-*/
 	int st;
 	int ppopt;
 	int cmpmode;
@@ -174,7 +131,6 @@ EXPORT BOOL hsc_comp ( int p1, int p2, int p3, int p4 )
 	}
 	strcpy( fname2, fname );
 	strcat( fname2, ".i" );
-	printf("common:%s\n", compath);
 	hsc3->SetCommonPath( compath );
 	ppopt = HSC3_OPT_UTF8IN;
 	if ( p1 ) ppopt|=HSC3_OPT_DEBUGMODE;
@@ -182,7 +138,6 @@ EXPORT BOOL hsc_comp ( int p1, int p2, int p3, int p4 )
 	if ( p2&4 ) ppopt|=HSC3_OPT_MAKEPACK;
 	if ( p2&8 ) ppopt|=HSC3_OPT_READAHT;
 	if ( p2&16 ) ppopt|=HSC3_OPT_MAKEAHT;
-	printf("fname:%s, fname2:%s\n", fname, fname2);
 	st = hsc3->PreProcess( fname, fname2, ppopt, rname );
 	if ( st != 0 ) {
 		hsc3->PreProcessEnd();
@@ -196,10 +151,8 @@ EXPORT BOOL hsc_comp ( int p1, int p2, int p3, int p4 )
 	cmpmode = p1 & HSC3_MODE_DEBUG;
 	cmpmode |= HSC3_MODE_UTF8;
 	if ( p3 ) cmpmode |= HSC3_MODE_DEBUGWIN;
-	printf("fname2:%s, oname:%s\n", fname2, oname);
 	st = hsc3->Compile( fname2, oname, cmpmode );
 	hsc3->PreProcessEnd();
-	printf("st:%d\n", st);
 	if ( st != 0 ) return st;
 	return 0;
 }
@@ -207,13 +160,10 @@ EXPORT BOOL hsc_comp ( int p1, int p2, int p3, int p4 )
 
 //----------------------------------------------------------
 
-EXPORT BOOL pack_ini ( BMSCR *bm, char *p1, int p2, int p3 )
+void pack_ini ( const std::string p1 )
 {
-	//
-	//		pack_ini "src-file"  (type6)
-	//
 #ifdef DPM_SUPPORT
-	strcpy(fname,p1);
+	strcpy(fname,p1.c_str());
 	cutext(fname);
 	if ( hsc3==NULL ) Alert( "#No way." );
 	hsc3->ResetError();
@@ -221,15 +171,11 @@ EXPORT BOOL pack_ini ( BMSCR *bm, char *p1, int p2, int p3 )
 	opt1=640;opt2=480;opt3=0;
 	strcpy(hspexe,"hsprt");
 #endif
-	return 0;
 }
 
 
-EXPORT BOOL pack_view ( int p1, int p2, int p3, int p4 )
+int pack_view ()
 {
-	//
-	//		pack_view (type0)
-	//
 	int st;
 #ifdef DPM_SUPPORT
 	st = dpmc_view();
@@ -240,13 +186,8 @@ EXPORT BOOL pack_view ( int p1, int p2, int p3, int p4 )
 }
 
 
-EXPORT BOOL pack_make ( int p1, int p2, int p3, int p4 )
+int pack_make ( int p1, int p2 )
 {
-	//
-	//		pack_make mode, key(type0)
-	//		     mode : (1=ForDPM/0=ForExecutable)
-	//		     key  : (0=Default/other=New Seed)
-	//
 	int st;
 #ifdef DPM_SUPPORT
 	if ( p2 != 0 ) dpmc_dpmkey( p2 );
@@ -258,33 +199,22 @@ EXPORT BOOL pack_make ( int p1, int p2, int p3, int p4 )
 }
 
 
-EXPORT BOOL pack_opt ( int p1, int p2, int p3, int p4 )
+void pack_opt ( int p1, int p2, int p3 )
 {
-	//
-	//		pack_opt sx,sy,disp_sw (type0)
-	//
 	opt1=p1;if (opt1==0) opt1=640;
 	opt2=p2;if (opt2==0) opt2=480;
 	opt3=p3;							// disp SW (1=blank window)
-	return 0;
 }
 
 
-EXPORT BOOL pack_rt ( BMSCR *bm, char *p1, int p2, int p3 )
+void pack_rt ( const std::string p1 )
 {
-	//
-	//		pack_rt "runtime-file"  (type6)
-	//
-	strcpy(hspexe,p1);
-	return 0;
+	strcpy(hspexe,p1.c_str());
 }
 
 
-EXPORT BOOL pack_exe ( int p1, int p2, int p3, int p4 )
+int pack_exe ( int p1 )
 {
-	//
-	//		pack_exe mode (type0)
-	//
 	int st;
 #ifdef DPM_SUPPORT
 	st=dpmc_mkexe(p1,hspexe,opt1,opt2,opt3);
@@ -295,14 +225,13 @@ EXPORT BOOL pack_exe ( int p1, int p2, int p3, int p4 )
 }
 
 
-EXPORT BOOL pack_get ( BMSCR *bm, char *p1, int p2, int p3 )
+int pack_get ( const std::string p1 )
 {
-	//
-	//		pack_get "get-file"  (type6)
-	//
 	int st;
 #ifdef DPM_SUPPORT
-	st=dpmc_get(p1);
+	char fn[HSP_MAX_PATH];
+	strcpy(fn,p1.c_str());
+	st=dpmc_get(fn);
 #else
 	st = 0;
 #endif
@@ -314,11 +243,8 @@ EXPORT BOOL pack_get ( BMSCR *bm, char *p1, int p2, int p3 )
 //		Additional service on 2.6
 //----------------------------------------------------------
 
-EXPORT BOOL hsc3_getsym ( int p1, int p2, int p3, int p4 )
+int hsc3_getsym ( int p1 )
 {
-	//
-	//		hsc3_getsym val  (type1)
-	//
 	hsc3->ResetError();
 	if (orgcompath==0) {
 		strcpy( compath,"/common/" );
@@ -329,21 +255,14 @@ EXPORT BOOL hsc3_getsym ( int p1, int p2, int p3, int p4 )
 }
 
 
-EXPORT BOOL hsc3_messize ( int *p1, int p2, int p3, int p4 )
+int hsc3_messize ()
 {
-	//
-	//		hsc3_messize val  (type1)
-	//
-	*p1 = hsc3->GetErrorSize();
-	return 0;
+	return hsc3->GetErrorSize();
 }
 
 
-EXPORT BOOL hsc3_make ( BMSCR *bm, char *p1, int p2, int p3 )
+int hsc3_make ( const std::string p1 )
 {
-	//
-	//		hsc3_make "myname"  (type6)
-	//
 	char libpath[HSP_MAX_PATH];
 	int i,type;
 	int opt3a,opt3b;
@@ -352,7 +271,7 @@ EXPORT BOOL hsc3_make ( BMSCR *bm, char *p1, int p2, int p3 )
 	if ( hsc3==NULL ) Alert( "#No way." );
 	hsc3->ResetError();
 
-	strcpy( libpath, p1 );
+	strcpy( libpath, p1.c_str() );
 	GetFilePath( libpath );
 
 	i = hsc3->OpenPackfile();
@@ -392,13 +311,42 @@ EXPORT BOOL hsc3_make ( BMSCR *bm, char *p1, int p2, int p3 )
 //		Additional service on 3.0
 //----------------------------------------------------------
 
-EXPORT BOOL hsc3_getruntime ( char *p1, char *p2, int p3, int p4 )
+std::string hsc3_getruntime ( const std::string p1 )
 {
-	//
-	//		hsc3_getruntime val  (type5)
-	//
-	int i;
-	i = hsc3->GetRuntimeFromHeader( p2, p1 );
-	if ( i != 1 ) { *p1 = 0; }
-	return 0;
+	char rt[HSP_MAX_PATH] = {};
+	char fn[HSP_MAX_PATH];
+	strcpy(fn,p1.c_str());
+	hsc3->GetRuntimeFromHeader( fn, rt );
+	return std::string( rt );
+}
+
+
+//----------------------------------------------------------
+//		Export for Javascript
+//----------------------------------------------------------
+
+using namespace emscripten;
+
+EMSCRIPTEN_BINDINGS ( hspcmp )
+{
+	function("hsc_ini", &hsc_ini);
+	function("hsc_refname", &hsc_refname);
+	function("hsc_objname", &hsc_objname);
+	function("hsc_ver", &hsc_ver);
+	function("hsc_bye", &hsc_bye);
+	function("hsc_getmes", &hsc_getmes);
+	function("hsc_clrmes", &hsc_clrmes);
+	function("hsc_compath", &hsc_compath);
+	function("hsc_comp", &hsc_comp);
+	//function("pack_ini", &pack_ini);
+	//function("pack_view", &pack_view);
+	//function("pack_make", &pack_make);
+	//function("pack_opt", &pack_opt);
+	//function("pack_rt", &pack_rt);
+	//function("pack_exe", &pack_exe);
+	//function("pack_get", &pack_get);
+	//function("hsc3_getsym", &hsc3_getsym);
+	//function("hsc3_messize", &hsc3_messize);
+	//function("hsc3_make", &hsc3_make);
+	function("hsc3_getruntime", &hsc3_getruntime);
 }
