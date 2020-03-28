@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>HSPCMP</title>
+	</head>
+	
+	<body>
+		<textarea id="editor" cols="80" rows="20">
+#include "hsp3dish.as"
+	repeat
+		redraw 0
+		color 220, 250, 220
+		boxf
+		color
+		pos 10, 30 - absf(cos(0.1 * cnt)) * 20
+		mes "Hello HSP3Dish"
+		redraw 1
+		await 30
+	loop
+		</textarea>
+		<br>
+		<button type="button" id="compile" onclick="compileScript()" disabled>Compile</button>
+		<br>
+		<div id="result"></div>
+		<script>
+			var Module = {
+				preRun: function() {
+					FS.mkdir('common');
+					// common フォルダに下記のファイル(UTF-8)が必要
+					const PRELOAD_FILES = ['hspdef.as','hsp3dish.as'];
+					for (const fn of PRELOAD_FILES) {
+						const f = 'common/' + fn;
+						FS.createPreloadedFile(f, '', f, true, false);
+					}
+				},
+				print: function(text) { console.log(text); },
+				printErr: function(text) { console.error(text); },
+				onRuntimeInitialized: function() {
+					document.getElementById('compile').disabled = false;
+				}
+			};
+
+			function compileScript() {
+				const data = (new TextEncoder()).encode(document.getElementById('editor').value);
+				const stream = FS.open("source.hsp", 'w');
+				FS.write(stream, data, 0, data.length, 0);
+				FS.close(stream);
+				Module.hsc_ini('source.hsp');
+				const st = Module.hsc_comp(0, 0, 0);
+				document.getElementById('result').innerHTML = Module.hsc_getmes().replace(/\r?\n/g, '<br>');
+				if (st == 0) {
+					const blob = new Blob([FS.readFile('source.ax')], {type: 'application/octet-stream'});
+					let link = document.createElement('a');
+					link.href = URL.createObjectURL(blob);
+					link.download = 'start.ax';
+					link.click();
+				}
+			}
+		</script>
+		<script src="hspcmp.js" async></script>
+	</body>
+	
+</html>
