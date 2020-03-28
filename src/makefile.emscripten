@@ -1,0 +1,282 @@
+#-----------------------------------------------------------------------------#
+# JSビルド用Makefile (Emscripten + GUN make)
+#
+# emmake make -f makefile.emscripten ( TARGET | all | clean )
+#   TARGET でビルド対象を指定（all で全ターゲット）
+#   clean ビルド用ファイルの削除
+#-----------------------------------------------------------------------------#
+
+TARGET_N := hsp3dish
+TARGET_GP := hsp3dish-gp
+TARGET_CMP := hspcmp
+TARGET_ALL := $(TARGET_N) $(TARGET_GP) $(TARGET_CMP)
+
+OUTDIR := Build
+
+ifeq (0,$(words $(filter all clean $(TARGET_ALL),$(MAKECMDGOALS))))
+$(error Invalid parameter)
+endif
+
+ifeq (,$(filter all,$(MAKECMDGOALS)))
+TARGETS := $(filter $(TARGET_ALL),$(MAKECMDGOALS))
+else
+TARGETS := $(TARGET_ALL)
+endif
+
+ifeq (,$(filter clean,$(MAKECMDGOALS)))
+all $(TARGET_ALL): $(addsuffix .js,$(TARGETS))
+.PHONY: all clean $(TARGET_ALL)
+else
+all $(TARGET_ALL): clean
+endif
+
+CC = emcc
+CXX = em++
+AR = emar
+
+CFLAGS = \
+	-Wall -MMD -MP -MF $(@:%.bc=%.d) \
+	-O3 \
+	-DHSPEMSCRIPTEN \
+	--use-preload-plugins \
+	-s WASM=1 \
+	-s ALLOW_MEMORY_GROWTH=1 \
+	-s DISABLE_EXCEPTION_CATCHING=0
+
+ALLOBJS :=
+
+#-----------------------------------------------------------------------------#
+# オブジェクトファイル生成時に出力ディレクトリなかったら作る用
+
+ifeq ($(OS),Windows_NT)
+CHECK_DIR = @if not exist $(subst /,\,$(@D)) mkdir $(subst /,\,$(@D))
+else
+CHECK_DIR = @if [ ! -e $(@D) ]; then mkdir -p $(@D); fi
+endif
+
+#-----------------------------------------------------------------------------#
+# ODIR: オブジェクトファイル出力ディレクトリ
+# DIRS: ソースファイル(*.c, *.cpp)を検索するディレクトリ
+# EXCS: 検索から除外するソースファイル
+
+SET_OBJS = $(addprefix $(ODIR)/,$(addsuffix .bc,$(basename $(filter-out $(EXCS),$(foreach dir,$(DIRS),$(wildcard $(dir)/*.cpp $(dir)/*.c))))))
+
+#-----------------------------------------------------------------------------#
+
+ifneq (,$(filter $(TARGET_N),$(TARGETS)))
+
+CFLAGS_N = $(CFLAGS) \
+	-DHSPDISH \
+	-DUSE_OBAQ \
+	-s LEGACY_GL_EMULATION=1 \
+	-s MAX_WEBGL_VERSION=2
+
+ODIR := $(OUTDIR)/$(TARGET_N)
+
+DIRS := \
+	hsp3 \
+	hsp3dish \
+	hsp3dish/emscripten \
+	hsp3dish/obaq \
+	obaq/physics
+
+EXCS := \
+	hsp3/sysreq.cpp
+
+OBJS_N := $(SET_OBJS)
+ALLOBJS += $(OBJS_N)
+
+$(TARGET_N).js: $(OBJS_N)
+	$(CXX) $(CFLAGS_N) $^ -o $@
+$(ODIR)/%.bc: %.c
+	$(CHECK_DIR)
+	$(CC) $(CFLAGS_N) -c $< -o $@
+$(ODIR)/%.bc: %.cpp
+	$(CHECK_DIR)
+	$(CXX) $(CFLAGS_N) -c $< -o $@
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+ifneq (,$(filter $(TARGET_GP),$(TARGETS)))
+
+CFLAGS_GP = $(CFLAGS) \
+	-DHSPDISH \
+	-DHSPDISHGP \
+	-DOPENGL_ES \
+	-DEMSCRIPTEN \
+	-D_LARGEFILE64_SOURCE \
+	-I hsp3dish/emscripten/extlib/include \
+	-I hsp3dish/extlib/src \
+	-I hsp3dish/gameplay/src \
+	-I hsp3dish/win32gp \
+	-s FULL_ES2=1
+
+ODIR := $(OUTDIR)/$(TARGET_GP)
+
+DIRS := \
+	hsp3 \
+	hsp3dish \
+	hsp3dish/emscripten \
+	hsp3dish/win32gp
+
+EXCS := \
+	hsp3/sysreq.cpp \
+	hsp3dish/emscripten/hgiox.cpp \
+	hsp3dish/win32gp/hsp3dish.cpp \
+	hsp3dish/win32gp/main.cpp
+
+OBJS_GP := $(SET_OBJS)
+ALLOBJS += $(OBJS_GP)
+
+#-------------------------------------#
+
+DIRR := hsp3dish/gameplay/src
+
+DIRS := \
+	$(DIRR) \
+	hsp3dish/extlib/src/libpng \
+	hsp3dish/extlib/src/zlib
+
+EXCS := \
+	$(DIRR)/AudioBuffer.cpp \
+	$(DIRR)/gameplay-main-android.cpp \
+	$(DIRR)/gameplay-main-linux.cpp \
+	$(DIRR)/gameplay-main-windows.cpp \
+	$(DIRR)/PlatformAndroid.cpp \
+	$(DIRR)/PlatformLinux.cpp \
+	$(DIRR)/PlatformWindows.cpp \
+	$(DIRR)/Script.cpp
+
+OBJS_GAMEPLAY := $(SET_OBJS)
+ALLOBJS += $(OBJS_GAMEPLAY)
+
+#-------------------------------------#
+
+DIRS := \
+	hsp3dish/extlib/src/LinearMath
+
+EXCS :=
+
+OBJS_LINEAR_MATH := $(SET_OBJS)
+ALLOBJS += $(OBJS_LINEAR_MATH)
+
+#-------------------------------------#
+
+DIRR := hsp3dish/extlib/src/BulletCollision
+
+DIRS := \
+	$(DIRR)/BroadphaseCollision \
+	$(DIRR)/CollisionDispatch \
+	$(DIRR)/CollisionShapes \
+	$(DIRR)/Gimpact \
+	$(DIRR)/NarrowPhaseCollision
+
+EXCS :=
+
+OBJS_BULLET_COLLISION := $(SET_OBJS)
+ALLOBJS += $(OBJS_BULLET_COLLISION)
+
+#-------------------------------------#
+
+DIRR := hsp3dish/extlib/src/BulletDynamics
+
+DIRS := \
+	$(DIRR)/Character \
+	$(DIRR)/ConstraintSolver \
+	$(DIRR)/Dynamics \
+	$(DIRR)/Featherstone \
+	$(DIRR)/MLCPSolvers \
+	$(DIRR)/Vehicle
+
+EXCS :=
+
+OBJS_BULLET_DYNAMICS := $(SET_OBJS)
+ALLOBJS += $(OBJS_BULLET_DYNAMICS)
+
+#-------------------------------------#
+
+LIBD1 = $(OUTDIR)/$(TARGET_GP)/hsp3dish
+LIBD2 = $(LIBD1)/extlib/src
+
+LIBS_GP := \
+	$(LIBD1)/libgameplay.a \
+	$(LIBD1)/libBulletDynamics.a \
+	$(LIBD1)/libBulletCollision.a \
+	$(LIBD1)/libLinearMath.a
+
+# *.a生成時にコマンドラインが長すぎてエラーになるので cd してパス文字列節約する
+$(LIBD1)/libgameplay.a: $(OBJS_GAMEPLAY)
+	cd $(LIBD1) && $(AR) rcs $(@F) $(subst $(LIBD1)/,,$^)
+$(LIBD1)/libLinearMath.a: $(OBJS_LINEAR_MATH)
+	cd $(LIBD2)/LinearMath && $(AR) rcs ../../../$(@F) $(subst $(LIBD2)/LinearMath/,,$^)
+$(LIBD1)/libBulletCollision.a: $(OBJS_BULLET_COLLISION)
+	cd $(LIBD2)/BulletCollision && $(AR) rcs ../../../$(@F) $(subst $(LIBD2)/BulletCollision/,,$^)
+$(LIBD1)/libBulletDynamics.a: $(OBJS_BULLET_DYNAMICS)
+	cd $(LIBD2)/BulletDynamics && $(AR) rcs ../../../$(@F) $(subst $(LIBD2)/BulletDynamics/,,$^)
+
+$(TARGET_GP).js: $(OBJS_GP) $(LIBS_GP)
+	$(CXX) $(CFLAGS_GP) $^ -o $@
+$(ODIR)/%.bc: %.c
+	$(CHECK_DIR)
+	$(CC) $(CFLAGS_GP) -std=c11 -c $< -o $@
+$(ODIR)/%.bc: %.cpp
+	$(CHECK_DIR)
+	$(CXX) $(CFLAGS_GP) -std=c++11 -c $< -o $@
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+ifneq (,$(filter $(TARGET_CMP),$(TARGETS)))
+
+CFLAGS_CMP = $(CFLAGS) \
+	-std=c++11 \
+	--bind
+
+ODIR := $(OUTDIR)/$(TARGET_CMP)
+
+DIRS := \
+	hspcmp \
+	hspcmp/win32dll \
+	hspcmp/emscripten
+
+EXCS := \
+	hspcmp/main.cpp \
+	hspcmp/win32dll/hspcmp3.cpp
+
+OBJS_CMP := $(SET_OBJS)
+ALLOBJS += $(OBJS_CMP)
+
+$(TARGET_CMP).js: $(OBJS_CMP)
+	$(CXX) $(CFLAGS_CMP) $^ -o $@
+$(ODIR)/%.bc: %.cpp
+	$(CHECK_DIR)
+	$(CXX) $(CFLAGS_CMP) -c $< -o $@
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+DEPS := $(ALLOBJS:%.bc=%.d)
+
+ifeq (,$(filter clean,$(MAKECMDGOALS)))
+
+-include $(DEPS)
+
+else
+
+ifeq ($(OS),Windows_NT)
+RM = del
+RD = rd /q /s
+else
+RM = rm -f
+RD = rm -rf
+endif
+
+clean:
+	$(RM) $(addsuffix .js,$(TARGET_ALL)) $(addsuffix .wasm,$(TARGET_ALL))
+	$(RD) $(OUTDIR)
+
+endif
