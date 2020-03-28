@@ -682,8 +682,8 @@ char *mem_alloc( void *base, int newsize, int oldsize )
 void Alert( const char *mes )
 {
 	EM_ASM_ARGS( {
-			console.log(Pointer_stringify($0));
-			//alert(Pointer_stringify($0));
+			console.log(UTF8ToString($0));
+			//alert(UTF8ToString($0));
 		}, mes );
 }
 
@@ -692,8 +692,8 @@ void AlertV( const char *mes, int val )
 	char ss[1024];
 	sprintf( ss, "%s%d",mes,val );
 	EM_ASM_ARGS( {
-			console.log(Pointer_stringify($0));
-			//alert(Pointer_stringify($0));
+			console.log(UTF8ToString($0));
+			//alert(UTF8ToString($0));
 		}, ss );
 }
 
@@ -705,7 +705,7 @@ void Alertf( const char *format, ... )
 	vsprintf(textbf, format, args);
 	va_end(args);
 	EM_ASM_ARGS( {
-			console.log(Pointer_stringify($0));
-			//alert(Pointer_stringify($0));
+			console.log(UTF8ToString($0));
+			//alert(UTF8ToString($0));
 		}, textbf );
 }

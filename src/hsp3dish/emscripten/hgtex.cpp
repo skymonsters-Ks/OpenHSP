@@ -747,7 +747,7 @@ int GetCacheMesTextureID( char *msg, int font_size, int font_style )
 		d.style.setProperty("font", $1 + "px 'sans-serif'");
 		document.body.appendChild(d);
 
-		var t = document.createTextNode(Pointer_stringify($0));
+		var t = document.createTextNode(UTF8ToString($0));
 		if (d.hasChildNodes())
 			d.removeChild(d.firstChild);
 		d.appendChild(t);
@@ -810,7 +810,7 @@ int GetCacheMesTextureID( char *msg, int font_size, int font_style )
 		var context = canvas.getContext("2d");
 		context.font = $1 + "px 'sans-serif'";
 
-		var msg = Pointer_stringify($0);
+		var msg = UTF8ToString($0);
 		context.clearRect ( 0 , 0 , $2 , $3);
 		//context.fillStyle = 'rgba(0, 0, 255, 255)';
 		context.fillStyle = 'rgba(255, 255, 255, 255)';
