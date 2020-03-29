@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# JSビルド用Makefile (Emscripten + GUN make)
+# JSビルド用Makefile (Emscripten + GNU make)
 #
 # emmake make -f makefile.emscripten ( TARGET | all | clean )
 #   TARGET でビルド対象を指定（all で全ターゲット）
@@ -11,7 +11,7 @@ TARGET_GP := hsp3dish-gp
 TARGET_CMP := hspcmp
 TARGET_ALL := $(TARGET_N) $(TARGET_GP) $(TARGET_CMP)
 
-OUTDIR := Build
+OUTDIR := _bc
 
 ifeq (0,$(words $(filter all clean $(TARGET_ALL),$(MAKECMDGOALS))))
 $(error Invalid parameter)
