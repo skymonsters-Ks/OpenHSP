@@ -68,9 +68,13 @@ static int hsp_sscnt, hsp_ssx, hsp_ssy;
 
 #define SDLK_SCANCODE_MAX 0x200
 static bool keys[SDLK_SCANCODE_MAX];
+#ifdef HSPEMSCRIPTEN
+static SDL_Surface *screen;
+#else
 SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_GLContext context;
+#endif
 
 #ifdef HSPDISHGP
 gamehsp *game;
@@ -170,17 +174,26 @@ static void hsp3dish_initwindow( engine* p_engine, int sx, int sy, char *windowt
 		return;
 	}
 
+	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+
+#ifdef HSPEMSCRIPTEN
+	screen = SDL_SetVideoMode( sx, sy, 16, SDL_OPENGL );
+	if ( !screen ) {
+		printf("Unable to set video mode: %s\n", SDL_GetError());
+		return;
+	}
+#else
 	window = SDL_CreateWindow( "HSPDish ver" hspver, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, sx, sy, SDL_WINDOW_OPENGL );
 	if ( window==NULL ) {
 		printf("Unable to set window: %s\n", SDL_GetError());
 		return;
 	}
-	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
 	context = SDL_GL_CreateContext(window);
-	if ( window==NULL ) {
+	if ( context==NULL ) {
 		printf("Unable to set GLContext: %s\n", SDL_GetError());
 		return;
 	}
+#endif
 
 	// 描画APIに渡す
 	hgio_init( 0, sx, sy, p_engine );
@@ -422,6 +435,9 @@ int hsp3dish_init( char *startfile )
 #ifdef HSPDEBUG
 	int i;
 #endif
+
+	Alertf("%s%s / Emscripten %d.%d.%d", HSPTITLE, hspver, __EMSCRIPTEN_major__, __EMSCRIPTEN_minor__, __EMSCRIPTEN_tiny__);
+
 	InitSysReq();
 
 #ifdef HSPDISHGP

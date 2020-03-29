@@ -81,13 +81,14 @@
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
 #include "SDL2/SDL_opengl.h"
+extern SDL_Window *window;
 #endif
 
 #endif
 
 #include "appengine.h"
 extern bool get_key_state(int sym);
-extern SDL_Window *window;
+
 #endif
 
 #include "../supio.h"
@@ -761,13 +762,11 @@ void hgio_setfilter( int type, int opt )
 int hgio_title( char *str1 )
 {
 #if defined(HSPEMSCRIPTEN)
-	SDL_SetWindowTitle( window, (const char *)str1 );
-	//SDL_WM_SetCaption( (const char *)str1, NULL );
+	SDL_WM_SetCaption( (const char *)str1, NULL );
 #endif
 #if defined(HSPLINUX)
 #ifndef HSPRASPBIAN
 	SDL_SetWindowTitle( window, (const char *)str1 );
-	//SDL_WM_SetCaption( (const char *)str1, NULL );
 #endif
 #endif
 	return 0;
@@ -2108,8 +2107,7 @@ int hgio_render_end( void )
 #endif
 
 #if defined(HSPEMSCRIPTEN)
-	SDL_GL_SwapWindow(window);
-	//SDL_GL_SwapBuffers();
+	SDL_GL_SwapBuffers();
 #endif
 #if defined(HSPLINUX)
 
@@ -2121,7 +2119,6 @@ int hgio_render_end( void )
 
 #ifndef HSPRASPBIAN
 	SDL_GL_SwapWindow(window);
-	//SDL_GL_SwapBuffers();
 #endif
 #endif
 

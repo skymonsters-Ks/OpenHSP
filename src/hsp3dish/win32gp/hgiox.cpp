@@ -48,7 +48,6 @@
 #define TTF_FONTFILE "/ipaexg.ttf"
 
 extern bool get_key_state(int sym);
-extern SDL_Window *window;
 
 #endif
 
@@ -500,8 +499,11 @@ int hgio_fontsystem_exec(char* msg, unsigned char* buffer, int pitch, int* out_s
 	if (buffer == NULL) {
 
 		SDL_Color dcolor={255,255,255,255};
+#ifdef HSPEMSCRIPTEN
+		sdlsurf = TTF_RenderText_Solid(font, msg, dcolor );
+#else
 		sdlsurf = TTF_RenderUTF8_Blended(font, msg, dcolor );
-
+#endif
 	    if (sdlsurf == NULL) {
 			Alertf( "TTF_Render : error" );
 			return -1;
@@ -1140,13 +1142,11 @@ int hgio_title( char *str1 )
 #endif
 
 #if defined(HSPEMSCRIPTEN)
-	SDL_SetWindowTitle( window, (const char *)str1 );
-	//SDL_WM_SetCaption( (const char *)str1, NULL );
+	SDL_WM_SetCaption( (const char *)str1, NULL );
 #endif
 #if defined(HSPLINUX)
 #ifndef HSPRASPBIAN
 	SDL_SetWindowTitle( window, (const char *)str1 );
-	//SDL_WM_SetCaption( (const char *)str1, NULL );
 #endif
 #endif
 
