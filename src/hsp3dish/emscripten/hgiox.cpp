@@ -1252,7 +1252,7 @@ void hgio_fcopy( float distx, float disty, short xx, short yy, short srcsx, shor
     glTexCoordPointer( 2,GL_FLOAT,0,uvf2D );
 
 	setBlendMode( 3 );
-	setColorTex_color(255);
+	setColorTex_color( 1.0f );
 	glEnableClientState(GL_COLOR_ARRAY);
 	glColorPointer(4,GL_FLOAT,0,_panelColorsTex);
 
